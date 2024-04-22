@@ -84,3 +84,101 @@ type ReplaceRes1 = Replace<'FaizGearFaizGear', 'Faiz', 'Lyle', true> // 'LyleGea
 type ReplaceRes2 = Replace<'FaizGearFaizGear', 'Faiz', 'Lyle', false> // 'LyleGearFaizGear'
 
 /* ------------------------------- 4.实现Replace, ReplaceAll ------------------------------ */
+
+/* -------------------------------- 5.实现Split ------------------------------- */
+type Split<Str extends string, Separator extends string> = Str extends `${infer Head}${Separator}${infer Tail}`
+  ? [Head, ...Split<Tail, Separator>]
+  : Str extends Separator
+  ? []
+  : [Str]
+
+type SplitRes1 = Split<'FaizGear FaizGear', ' '> // ["FaizGear", "FaizGear"]
+type SplitRes2 = Split<'Faiz,Gear,Lyle', ','> // ["Faiz", "Gear", "Lyle"]
+type SplitRes3 = Split<'FaizGear', ''> // ["F", "a", "i", "z", "G", "e", "a", "r"]
+
+type Separators = '_' | '-' | ' '
+type SplitRes4 = Split<'Faiz_Gear_Lyle', Separators> // ["Faiz", "Gear", "Lyle"]
+// 不能在一个字符中混用多个分隔符, 会得到一个诡异的结果.此时应该先处理一个分隔符, 然后再处理另一个分隔符
+type SplitRes5 = Split<'Faiz-Gear_Lyle', Separators> //  ["Faiz" | "Faiz-Gear", "Lyle"] | ["Faiz" | "Faiz-Gear", "Gear", "Lyle"]
+/* -------------------------------- 5.实现Split ------------------------------- */
+
+/* -------------------------------- 6.实现Join -------------------------------- */
+type Join<List extends Array<string | number>, Separator extends string> = List extends []
+  ? ''
+  : List extends [string | number]
+  ? `${List[0]}`
+  : List extends [string | number, ...infer Rest]
+  ? // @ts-expect-error
+    `${List[0]}${Separator}${Join<Rest, Separator>}`
+  : string
+
+// `lin-bu-du-${string}`
+type JoinRes1 = Join<['lin', 'bu', 'du'], '-'>
+
+/* -------------------------------- 6.实现Join -------------------------------- */
+
+/* ------------------------- 7.实现SnakeCase2CamelCase,KebabCase2CamelCase ------------------------ */
+type SnakeCase2CamelCase<Str extends string> = Str extends `${infer Head}_${infer Rest}`
+  ? `${Head}${Capitalize<SnakeCase2CamelCase<Rest>>}`
+  : Str
+
+type SnakeCase2CamelCaseRes1 = SnakeCase2CamelCase<'faiz_gear_lyle'> // 'faizGearLyle'
+
+type KebabCase2CamelCase<S extends string> = S extends `${infer Head}${'-'}${infer Rest}`
+  ? `${Head}${KebabCase2CamelCase<Capitalize<Rest>>}`
+  : S
+
+type KebabCase2CamelCaseRes1 = KebabCase2CamelCase<'faiz-gear-lyle'> // 'faizGearLyle'
+
+// 抽象出一个工具类型DelimiterCase2CamelCase
+type DelimiterCase2CamelCase<
+  S extends string,
+  Delimiter extends string
+> = S extends `${infer Head}${Delimiter}${infer Rest}`
+  ? `${Head}${Capitalize<DelimiterCase2CamelCase<Rest, Delimiter>>}`
+  : S
+
+type DelimiterCase2CamelCaseRes1 = DelimiterCase2CamelCase<'faiz-gear-lyle', '-'> // 'faizGearLyle'
+type DelimiterCase2CamelCaseRes2 = DelimiterCase2CamelCase<'faiz_gear_lyle', '_'> // 'faizGearLyle'
+
+/* ------------------------- 7.实现SnakeCase2CamelCase ------------------------ */
+
+/* ------------------------------ 8.实现CamelCase ----------------------------- */
+type Delimiters = '-' | '_' | ' '
+
+// type CapitalizeStringArray<Words extends any[]> = Words extends [`${infer First}`, ...infer Rest]
+//   ? `${Capitalize<First>}${CapitalizeStringArray<Rest>}`
+//   : ''
+
+// type CamelCaseStringArray<Words extends string[]> = Words extends [`${infer First}`, ...infer Rest]
+//   ? `${First}${CapitalizeStringArray<Rest>}`
+//   : never
+
+// type CamelCase<K extends string> = CamelCaseStringArray<Split<K, Delimiters>>
+
+// 处理边界情况 'Foo-bar-baz' 'FOO-BAR-BAZ'
+export type PlainObjectType = Record<string, any>
+
+export type WordSeparators = '-' | '_' | ' '
+
+type CapitalizeStringArray<Words extends readonly any[], Prev> = Words extends [`${infer First}`, ...infer Rest]
+  ? First extends undefined
+    ? ''
+    : First extends ''
+    ? CapitalizeStringArray<Rest, Prev>
+    : `${Prev extends '' ? First : Capitalize<First>}${CapitalizeStringArray<Rest, First>}`
+  : ''
+
+type CamelCaseStringArray<Words extends readonly string[]> = Words extends [`${infer First}`, ...infer Rest]
+  ? Uncapitalize<`${First}${CapitalizeStringArray<Rest, First>}`>
+  : never
+
+type CamelCase<K extends string> = CamelCaseStringArray<
+  Split<K extends Uppercase<K> ? Lowercase<K> : K, WordSeparators>
+>
+
+type CamelCaseRes1 = CamelCase<'faiz-gear-lyle'> // 'faizGearLyle'
+type CamelCaseRes2 = CamelCase<'faiz_gear_lyle'> // 'faizGearLyle'
+type CamelCaseRes3 = CamelCase<'faiz gear lyle'> // 'faizGearLyle'
+
+/* ------------------------------ 8.实现CamelCase ----------------------------- */
